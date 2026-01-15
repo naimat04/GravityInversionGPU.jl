@@ -41,7 +41,7 @@ This package supports multiple GPU backends. Install **only** the package for yo
 | **Intel** (Arc/Xe) | `Pkg.add("oneAPI")` |
 
 **Note**: GPU packages are optional. If none are installed, the package automatically uses CPU.
-```
+
 
 **That's it - just these 3 additions.** Keep your existing README structure, just insert these sections where indicated.
 
