@@ -28,7 +28,7 @@ cd GravityInversionGPU.jl
 julia --project=. -e 'using Pkg; Pkg.instantiate()'
 ```
 
-```markdown
+
 ### GPU Support 
 
 This package supports multiple GPU backends. Install **only** the package for your GPU type:
