@@ -1,6 +1,6 @@
 # GravityInversionGPU.jl
 
-A backend-agnostic Julia framework for 3D modeling and inversion of gravity data with multi-GPU support.
+A backend-agnostic Julia framework for 3D modeling and inversion of gravity data.
 
 ## 📖 About
 
