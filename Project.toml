@@ -1,0 +1,21 @@
+name = "GravityInversionGPU"
+uuid = "8e850b90-1b9f-11ee-be56-0242ac120002"
+authors = ["Your Name"]
+version = "1.0.0"
+
+[deps]
+ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
+KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+
+[weakdeps] 
+AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
+Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
+oneAPI = "0f10b25e-9e4a-54be-8f6c-8c86ea5c4ab5"
+
+[compat]
+julia = "1.9"

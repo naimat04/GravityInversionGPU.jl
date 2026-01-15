@@ -1,0 +1,14 @@
+# Julia
+Manifest.toml
+*.ji
+*.cov
+*.mem
+.deps/
+
+# GPU caches
+.cuda/
+.amdgpu/
+.oneapi/
+
+# OS
+.DS_Store
