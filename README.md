@@ -169,40 +169,6 @@ The framework generates standard output files:
 * `data_fit_gpu.png` - Data fit visualization
 * `model_plot_gpu.png` - Model comparison plots
 
-## 🧪 Running Tests
-
-To ensure everything is working correctly, run the comprehensive test:
-
-```bash
-# Create and run test script
-cat > test_installation.sh << 'EOF'
-#!/bin/bash
-echo "Testing GravityInversionGPU installation..."
-julia --project=. examples/run_inversion.jl --nx 4 --ny 4 --nz 2
-if [ $? -eq 0 ]; then
-    echo "✓ Test passed!"
-    echo "Output files created in: gravity_inversion_output_ka/"
-    ls -la gravity_inversion_output_ka/
-else
-    echo "✗ Test failed!"
-fi
-EOF
-
-chmod +x test_installation.sh
-./test_installation.sh
-```
-
-Or run directly:
-
-```bash
-julia --project=. -e '
-println("Testing GravityInversionGPU...")
-include("examples/run_inversion.jl")
-println("Running test with small mesh...")
-test_gravity_response_GPU(["--nx", "4", "--ny", "4", "--nz", "2"])
-println("✓ Test completed successfully!")
-'
-```
 
 ## 🔬 Examples
 
@@ -214,7 +180,6 @@ println("✓ Test completed successfully!")
 
 * Examples from real field data are presented in our accompanying paper
 
-```
 
 ## 🤝 Contributing
 
@@ -238,7 +203,6 @@ For questions and support:
 - Indian Institute of Technology Bombay
 - Geological Survey of Finland
 - Julia community for excellent tooling
-- GPU hardware providers
 
 ---
 
