@@ -1,8 +1,8 @@
 # Inversion algorithms
 using LinearAlgebra 
-function PreCG_GPU(A, SQS_diag, D_diag, f, M_diag, igmax::Int, delta::Float64)
+function CG_GPU(A, SQS_diag, D_diag, f, igmax::Int, delta::Float64)
     """
-    Preconditioned Conjugate Gradient solver for GPU arrays.
+    Conjugate Gradient solver for GPU arrays.
     
     Parameters:
     -----------
@@ -91,7 +91,7 @@ function Inversion_GPU(G, Q_diag, D_diag, obs, delta::Float64, itmax::Int, igmax
         push!(log_lines, "Iter $k: res=$res")
         
         M_diag = KernelAbstractions.ones(BACKEND, Float64, n)
-        x0 = PreCG_GPU(G, SQS_diag, D_diag, f, M_diag, igmax, delta)
+        x0 = CG_GPU(G, SQS_diag, D_diag, f, M_diag, igmax, delta)
         
         m0 = copy(mk)
         dm = Q_diag .* (Sdiag .* (G' * x0))
