@@ -1,6 +1,6 @@
 # Inversion algorithms
 using LinearAlgebra 
-function CG_GPU(A, SQS_diag, D_diag, f, igmax::Int, delta::Float64)
+function CG_GPU(A, SQS_diag, D_diag, f, M_diag, igmax::Int, delta::Float64)
     """
     Conjugate Gradient solver for GPU arrays.
     
