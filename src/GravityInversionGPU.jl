@@ -30,7 +30,7 @@ export
     Gravity_response3D_GPU, Call_matrix_KA, MatrixA_3D_KA_single,
     
     # From Inversion
-    Inversion_GPU, PreCG_GPU,
+    Inversion_GPU, CG_GPU,
     
     # From Visualization
     composite_surface_plot, composite_model_plot
