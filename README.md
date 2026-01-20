@@ -11,7 +11,7 @@ This package implements a high-performance framework for three-dimensional gravi
 - **Multi-GPU support** (NVIDIA CUDA, Apple Metal, AMD, Intel oneAPI)
 - **Advanced regularization** with depth weighting and sparsity constraints
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 
@@ -66,7 +66,7 @@ ls -la examples/gravity_inversion_output_ka/
 
 You should see files like `model.mesh`, `model_gpu.true`, `model_gpu.inv`, etc.
 
-## 🏗️ Features
+## Features
 
 ### Backend-Agnostic Computation
 
@@ -102,7 +102,7 @@ src/
     └── Visualization.jl           # Plotting
 ```
 
-## 📊 Performance
+## Performance
 
 ### GPU vs CPU Performance Comparison
 
@@ -126,7 +126,7 @@ src/
 * **Medium problems (100k-1M cells)**: GPU begins to show advantage
 * **Large problems (>1M cells)**: GPU provides 20-50× speedup
 
-## 🔧 Advanced Usage
+## Advanced Usage
 
 ### Custom Mesh Definition
 
@@ -157,7 +157,7 @@ composite_surface_plot(xobs, yobs, observed_data, predicted_data)
 composite_model_plot(true_model, inverted_model, mesh)
 ```
 
-## 📁 Output Files
+## Output Files
 
 The framework generates standard output files:
 
@@ -181,7 +181,7 @@ The framework generates standard output files:
 * Examples from real field data are presented in our accompanying paper
 
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -192,13 +192,13 @@ The framework generates standard output files:
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
-## 📧 Contact
+## Contact
 
 For questions and support:
 - Open an issue on GitHub
 - Contact: 24D0455@iitb.ac.in
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Indian Institute of Technology Bombay
 - Geological Survey of Finland
