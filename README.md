@@ -2,7 +2,7 @@
 
 A backend-agnostic Julia framework for 3D modeling and inversion of gravity data.
 
-## 📖 About
+## About
 
 This package implements a high-performance framework for three-dimensional gravity modeling and inversion in Julia. The framework addresses computational complexity, ill-posedness, and non-uniqueness in gravity inversion through:
 
@@ -170,7 +170,7 @@ The framework generates standard output files:
 * `model_plot_gpu.png` - Model comparison plots
 
 
-## 🔬 Examples
+## Examples
 
 ### Synthetic Examples
 
@@ -188,7 +188,7 @@ The framework generates standard output files:
 3. Add tests for new features
 4. Submit a pull request
 
-## 📄 License
+## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
