@@ -1,6 +1,6 @@
 name = "GravityInversionGPU"
 uuid = "8e850b90-1b9f-11ee-be56-0242ac120002"
-authors = ["Your Name"]
+authors = ["Nimatullah"]
 version = "1.0.0"
 
 [deps]
