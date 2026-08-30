@@ -1,7 +1,7 @@
 module GravityInversionGPU
 
 # Import required packages
-import LinearAlgebra, SparseArrays, Plots, Printf, ArgParse, KernelAbstractions
+import LinearAlgebra, SparseArrays, Plots, Printf, ArgParse, KernelAbstractions, CUDA
 
 # Create and export output directory
 const output_dir = "gravity_inversion_output_ka"
@@ -12,10 +12,9 @@ include("modules/CoreFunctions.jl")
 include("modules/GPUBackend.jl")
 include("modules/IOUtils.jl")  # This defines functions, not a module
 include("modules/ForwardModeling.jl")
-include("modules/Inversion.jl")
 include("modules/Visualization.jl")
+include("modules/MultiGPU.jl")  # Multi-GPU row-sharded forward/inversion
 
-# Re-export everything users need
 export 
     # Constants
     output_dir, BACKEND,
@@ -29,10 +28,12 @@ export
     # From ForwardModeling
     Gravity_response3D_GPU, Call_matrix_KA, MatrixA_3D_KA_single,
     
-    # From Inversion
-    Inversion_GPU, CG_GPU,
-    
     # From Visualization
-    composite_surface_plot, composite_model_plot
+    composite_surface_plot, composite_model_plot,
+
+    # From MultiGPU
+    ShardedMatrix, build_sharded_forward, Inversion_GPU_multi, CG_GPU_multi,
+    predict_multi, assign_devices, partition_rows,
+    replicate_to_devices, scatter_to_devices, gather_from_devices
 
 end

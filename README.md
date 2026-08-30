@@ -97,7 +97,7 @@ src/
     ├── CoreFunctions.jl           # Math functions
     ├── GPUBackend.jl              # GPU detection
     ├── ForwardModeling.jl         # Forward modeling
-    ├── Inversion.jl               # Inversion algorithms
+    ├── MultiGPU.jl                 # Multi-GPU sharded inversion
     ├── IOUtils.jl                 # File I/O
     └── Visualization.jl           # Plotting
 ```
@@ -106,25 +106,23 @@ src/
 
 ### GPU vs CPU Performance Comparison
 
-| Total Cells (nx×ny×nz) | CPU Time (s) | GPU Time (s) | Speedup |
-| ---------------------- | ------------ | ------------ | ------- |
-| 1,000                  | 0.22         | 19.25        | 0.01×   |
-| 36,000                 | 0.23         | 19.23        | 0.01×   |
-| 133,100                | 0.77         | 20.46        | 0.04×   |
-| 1,056,000              | 0.65         | 19.94        | 0.03×   |
-| 1,000,800              | 374.01       | 20.42        | 18.3×   |
-| 1,458,000              | 512.19       | 20.62        | 24.8×   |
-| 2,448,000              | 892.93       | 20.63        | 43.3×   |
-| 3,168,000              | 1139.62      | 22.17        | 51.4×   |
-| 3,213,000              | 1153.07      | 22.20        | 51.9×   |
+|                                    | 2.0×10⁶ cells | 3.28×10⁶ cells |
+| ---------------------------------- | -------------- | --------------- |
+| CPU total time                     | 324.21 s       | 1007.46 s       |
+| 1× A100 total time                 | 36.87 s        | 63.88 s         |
+| 4× A100 total time                 | 48.57 s        | 70.27 s         |
+| CPU → 1 GPU speedup                | 8.79×          | 15.77×          |
+| CPU → 4 GPU speedup                | 6.67×          | 14.33×          |
+| Peak GPU memory, 1× A100           | 21.85 GB       | 35.34 GB        |
+| Peak GPU memory, 4× A100           | 6.21 GB/device | 10.44 GB/device |
 
-*Note: GPU shows significant speedup for problems >1 million cells*
+*Note: 4-GPU sharding trades per-device memory footprint for wall-clock time — useful when a problem's memory requirement exceeds a single GPU's capacity, even though total time is somewhat higher than 1 GPU at these sizes.*
 
 ### Performance Characteristics
 
-* **Small problems (<100k cells)**: CPU performs better due to GPU overhead
-* **Medium problems (100k-1M cells)**: GPU begins to show advantage
-* **Large problems (>1M cells)**: GPU provides 20-50× speedup
+* **~2M cells**: single-GPU (1× A100) gives an 8.79× speedup over CPU
+* **~3.28M cells**: single-GPU (1× A100) gives a 15.77× speedup over CPU
+* **4-GPU sharding**: total time is somewhat higher than 1 GPU at these sizes, but peak memory per device drops substantially (e.g. 35.34 GB → 10.44 GB/device at 3.28M cells) — useful when a problem no longer fits on a single GPU
 
 ## Advanced Usage
 
@@ -144,9 +142,13 @@ write_mesh_UBC(mesh)  # Save to UBC format
 ### Custom Inversion Parameters
 
 ```julia
+# Build the (possibly multi-GPU) sharded forward operator
+Gs, Qd_chunks, Dd_chunks = build_sharded_forward(mesh, xobs, yobs, delta)
+
 # Run inversion with custom parameters
-inverted_model = Inversion_GPU(G_matrix, Q_diag, D_diag, obs_data,
-                               delta=1e-4, itmax=10, igmax=20)
+# use_squared=true enforces m = mk.^2 (positivity constraint)
+inverted_model = Inversion_GPU_multi(Gs, Qd_chunks, Dd_chunks, obs_data,
+                                      delta, itmax, igmax; use_squared=true)
 ```
 
 ### Visualization

@@ -4,7 +4,7 @@
 @kernel function kernel_MatrixA_3D_KA!(A, Cell_grid, data, d1, d2)
     """
     GPU kernel for computing sensitivity matrix elements.
-    
+
     Parameters:
     -----------
     A : DeviceArray
@@ -13,15 +13,15 @@
         Cell center coordinates and half-thickness
     data : DeviceArray
         Observation point coordinates
-    d1, d2 : Float64
+    d1, d2 : Float32
         Cell dimensions in x and y directions
     """
     i, j = @index(Global, NTuple)
-    
+
     @inbounds if i <= size(A, 1) && j <= size(A, 2)
         cx, cy, cz, ch = Cell_grid[j, 1], Cell_grid[j, 2], Cell_grid[j, 3], Cell_grid[j, 4]
         ox, oy = data[i, 1], data[i, 2]
-        
+
         # Calculate prism corners relative to observation point
         x2 = cx + d1/2 - ox
         x1 = cx - d1/2 - ox
@@ -39,7 +39,7 @@
         t6 = A_integral_single(x1, y2, z1)
         t7 = A_integral_single(x1, y1, z2)
         t8 = A_integral_single(x1, y1, z1)
-        
+
         A[i, j] = t1 - t2 - t3 + t4 - t5 + t6 + t7 - t8
     end
 end
@@ -47,60 +47,64 @@ end
 function MatrixA_3D_KA_single(Cell_grid, data, d1, d2; backend=BACKEND)
     """
     Compute sensitivity matrix on GPU using KernelAbstractions.
-    
+
     Parameters:
     -----------
-    Cell_grid : Matrix{Float64}
+    Cell_grid : Matrix{Float32}
         Cell information [x, y, z, half_thickness]
-    data : Matrix{Float64}
+    data : Matrix{Float32}
         Observation points [x, y]
-    d1, d2 : Float64
+    d1, d2 : Float32
         Cell dimensions
     backend : KA.Backend
         Computational backend
-        
+
     Returns:
     --------
-    DeviceArray : Sensitivity matrix
+    DeviceArray{Float32} : Sensitivity matrix
     """
     nobs = size(data, 1)
     nCells = size(Cell_grid, 1)
-    
+
     # Create arrays on the appropriate backend
-    A = KernelAbstractions.zeros(backend, Float64, nobs, nCells)
-    Cell_grid_ka = KernelAbstractions.allocate(backend, Float64, size(Cell_grid)...)
-    data_ka = KernelAbstractions.allocate(backend, Float64, size(data)...)
-    
-    # Copy data to backend
-    copyto!(Cell_grid_ka, Cell_grid)
-    copyto!(data_ka, data)
-    
+    # NOTE: Float32 instead of Float64 -> halves memory footprint of the dense
+    # sensitivity matrix (the main memory bottleneck for large grids).
+    A = KernelAbstractions.zeros(backend, Float32, nobs, nCells)
+    Cell_grid_ka = KernelAbstractions.allocate(backend, Float32, size(Cell_grid)...)
+    data_ka = KernelAbstractions.allocate(backend, Float32, size(data)...)
+
+    # Copy data to backend (explicit Float32 cast so no silent Float64 promotion happens)
+    copyto!(Cell_grid_ka, Float32.(Cell_grid))
+    copyto!(data_ka, Float32.(data))
+
     # Create kernel instance
     kernel! = kernel_MatrixA_3D_KA!(backend)
-    
+
     # Configure kernel launch
     ndrange = (nobs, nCells)
-    
-    # Launch kernel
-    ev = kernel!(A, Cell_grid_ka, data_ka, d1, d2; ndrange=ndrange)
-    
+
+    # Launch kernel (cast d1, d2 to Float32 to match array types inside the kernel;
+    # otherwise Julia promotes the whole per-thread computation back to Float64)
+    ev = kernel!(A, Cell_grid_ka, data_ka, Float32(d1), Float32(d2); ndrange=ndrange)
+
     # Wait for kernel completion
     if ev !== nothing
         wait(backend, ev)
     end
     KernelAbstractions.synchronize(backend)
-    
+
     return A
 end
 
 function Call_matrix_KA(xm_min, ym_min, xobs, yobs, z0, dx, dy, dz, nx, ny, nz, eps, delta; backend=BACKEND)
     """
     Generate forward modeling matrix with depth weighting.
-    
+
     Parameters:
     -----------
     xm_min, ym_min, z0 : Float64
-        Domain minimum coordinates
+        Domain minimum coordinates (kept Float64 here since these are cheap,
+        low-volume host-side computations; only the big GPU arrays are Float32)
     xobs, yobs : Vector{Float64}
         Observation coordinates
     dx, dy, dz : Float64
@@ -111,18 +115,18 @@ function Call_matrix_KA(xm_min, ym_min, xobs, yobs, z0, dx, dy, dz, nx, ny, nz, 
         Regularization parameters
     backend : KA.Backend
         Computational backend
-        
+
     Returns:
     --------
     Tuple : (G, Q_diag, D_diag, x1, y1, z1)
     """
     m = nx * ny * nz
     n = length(xobs)
-    
+
     # Compute cell centers
     x11 = xm_min .+ (0:nx-1) .* dx
     x1 = repeat(x11, 1, nz) |> x -> repeat(x, ny, 1) |> vec
-    
+
     # Compute cell center coordinates in y-direction
     y11 = zeros(Float64, nx * ny)
     for i in 1:ny
@@ -143,14 +147,14 @@ function Call_matrix_KA(xm_min, ym_min, xobs, yobs, z0, dx, dy, dz, nx, ny, nz, 
             z1[k] = temp
         end
     end
-    
+
     # Build cell grid and data points
     Cell_grid = hcat(x1, y1, z1, fill(dz/2, m))
     data1 = hcat(xobs, yobs)
-    
-    # Compute forward matrix using KernelAbstractions
+
+    # Compute forward matrix using KernelAbstractions (returns Float32 G)
     G_ka = MatrixA_3D_KA_single(Cell_grid, data1, dx, dy; backend=backend)
-    
+
     # Depth weighting
     q = zeros(Float64, m)
     for k in 1:nz
@@ -160,21 +164,24 @@ function Call_matrix_KA(xm_min, ym_min, xobs, yobs, z0, dx, dy, dz, nx, ny, nz, 
             q[idx] = wz
         end
     end
-    Q_diag_ka = KernelAbstractions.allocate(backend, Float64, m)
-    copyto!(Q_diag_ka, q)
-    
+    # Q_diag / D_diag are multiplied directly against G inside Inversion_GPU's
+    # matvecs, so they must match G's Float32 type to avoid promoting the whole
+    # CG loop back to Float64 (which would silently double memory + bandwidth again).
+    Q_diag_ka = KernelAbstractions.allocate(backend, Float32, m)
+    copyto!(Q_diag_ka, Float32.(q))
+
     # Data covariance
-    D_diag_ka = KernelAbstractions.allocate(backend, Float64, n)
-    fill!(D_diag_ka, delta)
-    
+    D_diag_ka = KernelAbstractions.allocate(backend, Float32, n)
+    fill!(D_diag_ka, Float32(delta))
+
     return G_ka, Q_diag_ka, D_diag_ka, x1, y1, z1
 end
 
-function Gravity_response3D_GPU(model::Vector{Float64}, mesh::NamedTuple, 
+function Gravity_response3D_GPU(model::Vector{Float64}, mesh::NamedTuple,
                                 x_obs_range::AbstractRange, y_obs_range::AbstractRange)
     """
     Generate synthetic gravity data for a given density model over a specified observation grid.
-    
+
     Parameters
     ----------
     model : Vector{Float64}
@@ -188,16 +195,16 @@ function Gravity_response3D_GPU(model::Vector{Float64}, mesh::NamedTuple,
         - delta : Data covariance parameter (Float64)
     x_obs_range, y_obs_range : AbstractRange{Float64}
         Observation point ranges in x and y directions
-        
+
     Returns
     -------
-    gravity_data : Vector{Float64}
+    gravity_data : Vector{Float32}
         Synthetic gravity data at observation points
-    G_gpu : DeviceArray{Float64, 2}
+    G_gpu : DeviceArray{Float32, 2}
         Forward modeling matrix on GPU
-    Q_diag_gpu : DeviceArray{Float64}
+    Q_diag_gpu : DeviceArray{Float32}
         Model covariance diagonal on GPU
-    D_diag_gpu : DeviceArray{Float64}
+    D_diag_gpu : DeviceArray{Float32}
         Data covariance diagonal on GPU
     xobs, yobs : Vector{Float64}
         Observation point coordinates
@@ -205,28 +212,28 @@ function Gravity_response3D_GPU(model::Vector{Float64}, mesh::NamedTuple,
         Cell center coordinates
     t : Float64
         Time taken for matrix computation
-        
+
     Examples
     --------
     ```julia
     # Define observation grid
     x_range = 0:100:10000  # 0 to 10km with 100m spacing
     y_range = 0:100:10000
-    
+
     # Generate synthetic data
-    gravity_data, G, Q, D, xobs, yobs = 
+    gravity_data, G, Q, D, xobs, yobs =
         Gravity_response3D_GPU(model, mesh, x_range, y_range)
     ```
     """
-    
+
     # Create observation grid
     grid = meshgrid(collect(x_obs_range), collect(y_obs_range))
     xobs, yobs = vec(grid.x), vec(grid.y)
-    
+
     println("Observation grid: $(length(xobs)) points")
     println("X range: $(minimum(x_obs_range)) to $(maximum(x_obs_range)) m")
     println("Y range: $(minimum(y_obs_range)) to $(maximum(y_obs_range)) m")
-    
+
     # Compute forward modeling matrix with timing
     t = @elapsed begin
         G_gpu, Q_diag_gpu, D_diag_gpu, x1, y1, z1 = Call_matrix_KA(
@@ -235,34 +242,36 @@ function Gravity_response3D_GPU(model::Vector{Float64}, mesh::NamedTuple,
             mesh.eps, mesh.delta
         )
     end
-    
+
     println("Time for matrix computation: $(round(t, digits=3)) seconds")
     println("Matrix size: $(size(G_gpu)) (observations × cells)")
-    
-    # Transfer model to GPU
-    model_ka = KernelAbstractions.allocate(BACKEND, Float64, length(model))
-    copyto!(model_ka, model)
-    
+    mat_gb = (sizeof(Float32) * size(G_gpu, 1) * size(G_gpu, 2)) / 1e9
+    println("G matrix memory (Float32): $(round(mat_gb, digits=2)) GB")
+
+    # Transfer model to GPU (cast to Float32 to match G_gpu)
+    model_ka = KernelAbstractions.allocate(BACKEND, Float32, length(model))
+    copyto!(model_ka, Float32.(model))
+
     # Compute gravity response: g = G * m
     gravity_data_vec = similar(model_ka, size(G_gpu, 1))
     mul!(gravity_data_vec, G_gpu, model_ka)
-    gravity_data = Array(gravity_data_vec)  # Copy back to CPU
-    
+    gravity_data = Array(gravity_data_vec)  # Copy back to CPU (Float32)
+
     # Write data to UBC format file
     output_dir = "gravity_inversion_output_ka"
     mkpath(output_dir)
     data_file = joinpath(output_dir, "synthetic_data.obs")
-    
+
     open(data_file, "w") do io
         println(io, length(xobs))
         for i in eachindex(xobs)
-            @printf(io, "%.1f %.1f 0 %.6e %.6e\n", 
+            @printf(io, "%.1f %.1f 0 %.6e %.6e\n",
                     xobs[i], yobs[i], gravity_data[i], mesh.delta)
         end
     end
-    
+
     println("Synthetic data written to $data_file")
     println("Gravity range: [$(minimum(gravity_data)), $(maximum(gravity_data))] mGal")
-    
+
     return gravity_data, G_gpu, Q_diag_gpu, D_diag_gpu, xobs, yobs, x1, y1, z1, t
 end
