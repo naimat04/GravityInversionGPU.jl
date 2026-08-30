@@ -198,7 +198,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 For questions and support:
 - Open an issue on GitHub
-- Contact: 24D0455@iitb.ac.in
+- Nimatullah: 24D0455@iitb.ac.in
+- Pankaj K. Mishra: pankaj.mishra@gtk.fi
 
 ## Acknowledgments
 
